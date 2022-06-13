@@ -13,10 +13,12 @@ The task for this assignment is to design a database schema and a set of front-e
 
 The following files were submitted below:
 
-create_schema.txt: A schema creation file, consisting of an SQL script with DROP and CREATE statements for each table, along with DROP and CREATE statements for all required constraints. It must be possible to completely drop/recreate your database schema by running all of the commands in this file.
-add_airports.py
-add_aircraft.py
-manage_flights.py
-manage_reservations.py
-report_all_flights.py
-report_itinerary.py
+<ul>
+  <li>create_schema.txt: A schema creation file, consisting of an SQL script with DROP and CREATE statements for each table, along with DROP and CREATE statements for all required constraints. It must be possible to completely drop/recreate your database schema by running all of the commands in this file.</li>
+  <li>add_airports.py</li>
+  <li>add_aircraft.py</li>
+  <li>manage_flights.py</li>
+  <li>manage_reservations.py</li>
+  <li>report_all_flights.py</li>
+  <li>report_itinerary.py</li>
+</ul>
