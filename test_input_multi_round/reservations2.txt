@@ -1,0 +1,7 @@
+DELETE,1002,12346,Hannah Hindbaer
+DELETE,1003,12348,Leona Loganberry
+DELETE,1004,12348,Leona Loganberry
+CREATE,1008,12348,Leona Loganberry
+CREATE,1009,12348,Leona Loganberry
+CREATE,1010,12348,Leona Loganberry
+CREATE,1010,12346,Hannah Hindbaer

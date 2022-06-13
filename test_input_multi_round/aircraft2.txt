@@ -1,0 +1,2 @@
+CGXPE,Island Express Air,Piper PA-31,6
+CGIEA,Island Express Air,Beech B100,12

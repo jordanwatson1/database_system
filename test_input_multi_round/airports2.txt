@@ -1,0 +1,3 @@
+YDT,Boundary Bay Airport,Canada,false
+YXX,Abbotsford International Airport,Canada,true
+YYC,Calgary International Airport,Canada,true

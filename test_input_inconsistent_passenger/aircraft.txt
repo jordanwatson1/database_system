@@ -1,0 +1,8 @@
+CFGDT,Air Canada,Boeing 787-9,270
+CFGKP,Air Canada,Airbus A321-211,180
+CFIVW,Air Canada,Boeing 777-333ER,320
+CGAUN,Air Canada,Boeing 767-233,200
+CFENJ,WestJet,DeHaviland DHC-8-402,75
+CFNWD,WestJet,Boeing 737-8,170
+CGXPE,Island Express Air,Piper PA-31,6
+CGIEA,Island Express Air,Beech B100,12

@@ -1,0 +1,3 @@
+YVR,Vancouver International Airport,Canada,true
+YYJ,Victoria International Airport,Canada,true
+YCD,Nanaimo Airport,Canada,false

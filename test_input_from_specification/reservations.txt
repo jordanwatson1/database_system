@@ -1,0 +1,9 @@
+CREATE,1000,12345,Alissa Aubergine
+CREATE,1000,12346,Hannah Hindbaer
+CREATE,1000,12347,Behrouz Boruvka
+CREATE,1006,12348,Leona Loganberry
+CREATE,1006,12349,Kaito Kiichigo
+CREATE,1008,12350,Alistair Avocado
+DELETE,1000,12346,Hannah Hindbaer
+CREATE,1007,12348,Leona Loganberry
+CREATE,1008,12348,Leona Loganberry

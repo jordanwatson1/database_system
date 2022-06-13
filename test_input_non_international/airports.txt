@@ -1,0 +1,15 @@
+YVR,Vancouver International Airport,Canada,true
+YYJ,Victoria International Airport,Canada,true
+YCD,Nanaimo Airport,Canada,false
+YDT,Boundary Bay Airport,Canada,false
+YXX,Abbotsford International Airport,Canada,true
+YYC,Calgary International Airport,Canada,true
+YYZ,Lester B. Pearson International Airport,Canada,true
+YHU,Montreal/Saint-Hubert Airport,Canada,false
+YUL,Montreal-Trudeau International Airport,Canada,true
+LAX,Los Angeles International Airport,United States,true
+LGA,LaGuardia Airport,United States,false
+JFK,John F. Kennedy International Airport,United States,true
+EWR,Newark Liberty International Airport,United States,true
+HND,Tokyo International Airport,Japan,true
+NRT,Narita International Airport,Japan,true

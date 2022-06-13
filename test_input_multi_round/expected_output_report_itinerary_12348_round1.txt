@@ -1,0 +1,10 @@
+Itinerary for 12348 (Leona Loganberry)
+Flight 1003 (Air Canada):
+    [2020-03-12 22:19:00] - [2020-03-13 00:10:00] (111 minutes)
+    Nanaimo Airport -> Victoria International Airport (CFGKP: Airbus A321-211)
+Flight 1004 (Air Canada):
+    [2020-03-13 05:51:00] - [2020-03-13 06:19:00] (28 minutes)
+    Victoria International Airport -> Vancouver International Airport (CFGKP: Airbus A321-211)
+Flight 1002 (Air Canada):
+    [2020-03-13 18:07:00] - [2020-03-13 18:42:00] (35 minutes)
+    Vancouver International Airport -> Nanaimo Airport (CFGKP: Airbus A321-211)

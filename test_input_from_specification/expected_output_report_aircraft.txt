@@ -1,0 +1,32 @@
+CFENJ (DeHaviland DHC-8-402): WestJet
+    Number of flights : 0
+    Total flight hours: 0
+    Average passengers: (0.00/75)
+CFGDT (Boeing 787-9): Air Canada
+    Number of flights : 1
+    Total flight hours: 11
+    Average passengers: (0.00/270)
+CFGKP (Airbus A321-211): Air Canada
+    Number of flights : 3
+    Total flight hours: 3
+    Average passengers: (0.00/180)
+CFIVW (Boeing 777-333ER): Air Canada
+    Number of flights : 0
+    Total flight hours: 0
+    Average passengers: (0.00/320)
+CFNWD (Boeing 737-8): WestJet
+    Number of flights : 1
+    Total flight hours: 2
+    Average passengers: (2.00/170)
+CGAUN (Boeing 767-233): Air Canada
+    Number of flights : 0
+    Total flight hours: 0
+    Average passengers: (0.00/200)
+CGIEA (Beech B100): Island Express Air
+    Number of flights : 0
+    Total flight hours: 0
+    Average passengers: (0.00/12)
+CGXPE (Piper PA-31): Island Express Air
+    Number of flights : 3
+    Total flight hours: 2
+    Average passengers: (1.67/6)

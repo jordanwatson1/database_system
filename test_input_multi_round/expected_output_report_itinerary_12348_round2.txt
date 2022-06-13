@@ -1,0 +1,7 @@
+Itinerary for 12348 (Leona Loganberry)
+Flight 1002 (Air Canada):
+    [2020-03-13 18:07:00] - [2020-03-13 18:42:00] (35 minutes)
+    Vancouver International Airport -> Nanaimo Airport (CFGKP: Airbus A321-211)
+Flight 1008 (Island Express Air):
+    [2020-07-04 10:30:00] - [2020-07-04 10:50:00] (20 minutes)
+    Nanaimo Airport -> Vancouver International Airport (CGXPE: Piper PA-31)

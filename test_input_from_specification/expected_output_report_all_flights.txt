@@ -1,0 +1,32 @@
+Flight 1003 (Air Canada):
+    [2020-03-12 22:19:00] - [2020-03-13 00:10:00] (111 minutes)
+    Calgary International Airport -> Victoria International Airport
+    CFGKP (Airbus A321-211): 0/180 seats booked
+Flight 1004 (Air Canada):
+    [2020-03-13 05:51:00] - [2020-03-13 06:19:00] (28 minutes)
+    Victoria International Airport -> Vancouver International Airport
+    CFGKP (Airbus A321-211): 0/180 seats booked
+Flight 1002 (Air Canada):
+    [2020-03-13 18:07:00] - [2020-03-13 18:42:00] (35 minutes)
+    Vancouver International Airport -> Calgary International Airport
+    CFGKP (Airbus A321-211): 0/180 seats booked
+Flight 1001 (Air Canada):
+    [2020-06-10 10:00:00] - [2020-06-10 20:35:00] (635 minutes)
+    Vancouver International Airport -> Tokyo International Airport
+    CFGDT (Boeing 787-9): 0/270 seats booked
+Flight 1000 (WestJet):
+    [2020-07-01 06:10:00] - [2020-07-01 07:50:00] (100 minutes)
+    Victoria International Airport -> Calgary International Airport
+    CFNWD (Boeing 737-8): 2/170 seats booked
+Flight 1006 (Island Express Air):
+    [2020-07-04 06:50:00] - [2020-07-04 07:25:00] (35 minutes)
+    Victoria International Airport -> Abbotsford International Airport
+    CGXPE (Piper PA-31): 2/6 seats booked
+Flight 1007 (Island Express Air):
+    [2020-07-04 08:45:00] - [2020-07-04 09:20:00] (35 minutes)
+    Abbotsford International Airport -> Nanaimo Airport
+    CGXPE (Piper PA-31): 1/6 seats booked
+Flight 1008 (Island Express Air):
+    [2020-07-04 10:30:00] - [2020-07-04 10:55:00] (25 minutes)
+    Nanaimo Airport -> Victoria International Airport
+    CGXPE (Piper PA-31): 2/6 seats booked

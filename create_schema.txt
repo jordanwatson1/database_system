@@ -1,0 +1,645 @@
+-- create_schema.sql
+-- CSC 370 - Summer 2020 - Assignment 6
+--
+--
+-- Jordan Watson - 08/01/2020
+
+-- Issue a pre-emptive rollback (to discard the effect of any active transaction) --
+rollback;
+
+drop table if exists reservations;
+drop table if exists flights;
+drop table if exists aircrafts;
+drop table if exists passengers;
+drop table if exists airports;
+drop table if exists airlines;
+
+drop function if exists airlines_ignore_duplicates();
+drop function if exists passengers_ignore_duplicates();
+drop function if exists no_duplicate_flights_per_passenger();
+drop function if exists source_dest_international_tigger();
+drop function if exists num_reservations_not_exceeding_flight_capacity_trigger();
+drop function if exists arrival_atleast_60min_before_departure();
+drop function if exists arrival_atleast_60min_before_departure_on_delete();
+drop function if exists most_recent_flight_at_same_airport();
+drop function if exists most_recent_flight_at_same_airport_on_delete();
+drop function if exists departure_atleast_60min_after_arrival_of_F();
+drop function if exists departure_atleast_60min_after_arrival_of_F_on_delete();
+drop function if exists next_flight_at_same_airport();
+drop function if exists next_flight_at_same_airport_on_delete();
+
+create table airports(IATA_code varchar(3) primary key,
+			airport_name varchar(255) not null,
+			country_name varchar(255) not null,
+			is_international boolean,
+			check(length(airport_name) > 0),
+			check(length(country_name) > 0),
+			check(IATA_code ~ '[A-Z]{3}')
+			);
+			
+create table airlines(airline_name varchar(255) primary key,
+                        check(length(airline_name) > 0)
+                        );		  
+
+create table aircrafts(aircraft_ID varchar(64) primary key,
+			airline_name varchar(255) not null,
+			model_name varchar(255) not null,
+			passenger_capacity integer,
+			foreign key(airline_name) references airlines(airline_name),
+			check(length(aircraft_ID) > 0),
+			check(length(model_name) > 0),
+			check(passenger_capacity >= 0),
+			check(aircraft_ID ~ '$[a-zA-Z0-9]*')
+			);
+
+create table flights(flight_ID_num integer primary key,
+                        airline_name varchar(255) not null,
+                        source_IATA_code varchar(3) not null,
+                        dest_IATA_code varchar(3) not null,
+                        departure_time timestamp,
+                        arrival_time timestamp,
+                        aircraft_ID varchar(64) not null,
+                        foreign key(source_IATA_code) references airports(IATA_code),
+                        foreign key(dest_IATA_code) references airports(IATA_code),
+			foreign key(aircraft_ID) references aircrafts(aircraft_ID),
+                        foreign key(airline_name) references airlines(airline_name),
+                        check(source_IATA_code <> dest_IATA_code),
+                        check(departure_time < arrival_time)
+                        );
+
+create table passengers(passenger_ID integer primary key,
+			passenger_name varchar(1000) not null,
+			check(length(passenger_name) >= 1)
+			);
+
+create table reservations(flight_ID_num integer not null,
+			passenger_ID integer not null,
+			primary key(passenger_ID, flight_ID_num),
+			foreign key(passenger_ID) references passengers(passenger_ID),
+			foreign key(flight_ID_num) references flights(flight_ID_num)						
+				on delete restrict
+				on update cascade
+			);
+
+-- Define airlines_ignore_duplicates function --
+
+-- silently ignore duplicate airline names in airlines table --
+create function airlines_ignore_duplicates()
+returns trigger as
+$BODY$
+begin
+if (select count(*) from airlines
+	where airline_name = new.airline_name) > 0
+then
+	return null;
+end if;
+return new;
+end
+$BODY$
+language plpgsql;
+
+create trigger no_duplicate_airline_names
+	before insert on airlines
+	for each row
+	execute procedure airlines_ignore_duplicates();
+-- --
+
+
+
+-- Define passengers_ignore_duplicates function --
+
+-- silently ignore duplicate names with the same id --
+create function passengers_ignore_duplicates()
+returns trigger as
+$BODY$
+begin
+if (select count(*) from passengers 
+	where passenger_ID = new.passenger_ID and passenger_name = new.passenger_name) > 0
+then
+	return null;
+end if;
+return new;
+end
+$BODY$
+language plpgsql;
+
+-- allow the same passenger to be inserted into reservations multiple times --
+create trigger passengers_ignore_duplicates_constraint
+	before insert on passengers
+	for each row
+	execute procedure passengers_ignore_duplicates(); 
+-- --
+
+
+
+-- Define no_duplicate_flights_per_passenger --
+
+create function no_duplicate_flights_per_passenger()
+returns trigger as
+$BODY$
+begin
+if (select count(*) from reservations
+	where flight_ID_num = new.flight_ID_num and passenger_ID = new.passenger_ID) > 0
+then
+	raise exception 'Passengers are not permitted to have multiple reservations on the same flight';
+end if;
+return new;
+end
+$BODY$
+language plpgsql;
+
+-- prevent passenger reserving multiple spots on same flight --
+create trigger no_duplicate_flights_per_passenger_constraint
+	before insert on reservations
+	for each row
+	execute procedure no_duplicate_flights_per_passenger();
+-- --
+
+
+
+-- Define source_dest_international_tigger function --
+
+-- Tests if the source and dest are both international airports if in different countries --
+create function source_dest_international_tigger()
+returns trigger as
+$BODY$
+begin
+if 	(select distinct country_name from airports natural join flights
+		where IATA_code = new.source_IATA_code)
+	<> 
+    	(select distinct country_name from airports natural join flights
+		where IATA_code = new.dest_IATA_code)
+	AND
+	((select distinct is_international from airports natural join flights
+		where IATA_code = new.source_IATA_code) = false
+	OR
+	(select distinct is_international from airports natural join flights
+		where IATA_code = new.dest_IATA_code) = false)
+then
+	raise exception 'Both airports must be international airports.';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the source dest international trigger to the flights table -- 
+create trigger source_dest_international_constraint
+	after insert or update on flights
+	for each row
+	execute procedure source_dest_international_tigger();
+-- --
+
+
+
+-- Define num_reservations_not_exceeding_flight_capacity_trigger function --
+
+-- Tests if number of reservations exceeds a flights seat capacity --
+create function num_reservations_not_exceeding_flight_capacity_trigger()
+returns trigger as
+$BODY$
+begin
+if 	(select count(*) from reservations
+		where flight_ID_num = new.flight_ID_num) > 
+	(select passenger_capacity from aircrafts natural join flights
+		where flight_ID_num = new.flight_ID_num)
+then
+	raise exception 'The number of reservations cannot exceed aircrafts seat capacity.';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the num reservations not exceeding seat capacity to the reservations table --
+create constraint trigger num_reservations_not_exceeding_flight_capacity_constraint1
+	after insert on reservations 
+	deferrable
+	for each row
+	execute procedure num_reservations_not_exceeding_flight_capacity_trigger();
+
+-- Add the num reservations not exceeding seat capacity to the flights table -- 
+create constraint trigger num_reservations_not_exceeding_flight_capacity_constraint2
+	after update on flights
+	deferrable
+	for each row
+	execute procedure num_reservations_not_exceeding_flight_capacity_trigger();
+-- --
+
+
+
+-- Define arrival_atleast_60min_before_departure function --
+
+-- Check that all flights have an arrival time >= 60 minutes before departure time of F --
+-- for all flights using the same aircraft as F --
+create function arrival_atleast_60min_before_departure()
+returns trigger as
+$BODY$
+begin
+if (select count(*) as count
+		from 
+			flights 
+		natural join
+			(select aircraft_ID as id from flights where flight_ID_num = new.flight_ID_num) as T3
+		where aircraft_ID = id
+			and extract(epoch from departure_time) <= extract(epoch from new.arrival_time)
+			and flight_ID_num <> new.flight_ID_num)
+	<>
+	(select count(*) as count 
+		from
+			(select flight_ID_num, 
+				(extract(epoch from new.departure_time) - extract(epoch from arrival_time))/60 as difference 
+				from 
+					flights 
+				natural join
+					(select aircraft_ID as id from flights where flight_ID_num = new.flight_ID_num) as T2	
+				where aircraft_ID = id
+					and extract(epoch from departure_time) <= extract(epoch from new.arrival_time) 
+					and flight_ID_num <> new.flight_ID_num) as T1
+		where difference >= 60)
+then
+	raise exception 'All such flights must have an arrival time at least 60 minutes before the departure time of a flight using the same aircraft.';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the arrival time atleast 60 minutes before departure constraint to the flights table --
+create constraint trigger arrival_atleast_60min_before_departure_constraint
+        after update or insert on flights
+        deferrable
+	for each row
+        execute procedure arrival_atleast_60min_before_departure();
+-- --
+
+
+-- Define arrival_atleast_60min_before_departure function for DELETE --
+
+-- Check that all flights have an arrival time >= 60 minutes before departure time of F --
+-- for all flights using the same aircraft as F --
+create function arrival_atleast_60min_before_departure_on_delete()
+returns trigger as
+$BODY$
+begin
+if (select count(*) as count
+                from
+                        flights
+                natural join
+                        (select aircraft_ID as id from flights where flight_ID_num = old.flight_ID_num) as T3
+                where aircraft_ID = id
+                        and extract(epoch from departure_time) <= extract(epoch from old.arrival_time)
+                        and flight_ID_num <> old.flight_ID_num)
+        <>
+        (select count(*) as count
+                from
+                        (select flight_ID_num,
+                                (extract(epoch from old.departure_time) - extract(epoch from arrival_time))/60 as difference
+                                from
+                                        flights
+                                natural join
+                                        (select aircraft_ID as id from flights where flight_ID_num = old.flight_ID_num) as T2
+                                where aircraft_ID = id
+                                        and extract(epoch from departure_time) <= extract(epoch from old.arrival_time)
+                                        and flight_ID_num <> old.flight_ID_num) as T1
+                where difference >= 60)
+then
+        raise exception 'All such flights must have an arrival time at least 60 minutes before the departure time of a flight using the same aircraft.';
+end if;
+return old;
+end
+$BODY$
+language plpgsql;
+
+-- Add the arrival time atleast 60 minutes before departure constraint to the flights table --
+create constraint trigger arrival_atleast_60min_before_departure_on_delete_constraint
+        after delete on flights
+        deferrable
+	for each row
+        execute procedure arrival_atleast_60min_before_departure_on_delete();
+-- --
+
+
+
+-- Define most_recent_flight_at_same_airport function --
+
+-- Check that the most recent flight before F must have destination airport = source airport of F --
+create function most_recent_flight_at_same_airport()
+returns trigger as
+$BODY$
+begin
+if 
+        ((select count(dest_IATA_code)
+                from
+                        flights
+                natural join
+                        (select max(arrival_time) as closest_to_departure
+                                from
+                                        flights
+                                where aircraft_ID = new.aircraft_ID
+                                        and departure_time < new.arrival_time
+                                        and flight_ID_num <> new.flight_ID_num) as T1
+                where arrival_time = closest_to_departure
+                        and aircraft_ID = new.aircraft_ID) <> 0)
+	AND
+	((select dest_IATA_code 
+		from
+			flights
+		natural join
+			(select max(arrival_time) as closest_to_departure
+				from 
+					flights 
+				where aircraft_ID = new.aircraft_ID 
+					and departure_time < new.arrival_time
+					and flight_ID_num <> new.flight_ID_num) as T1
+		where arrival_time = closest_to_departure
+			and aircraft_ID = new.aircraft_ID)
+	<>
+	(select source_IATA_code
+		from
+			flights
+		where flight_ID_num = new.flight_ID_num))
+then
+	raise exception 'The most recent flight before the next departure of the same aircraft must be located at the same airport ';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the most recent flight at same airport constraint to the flights table --
+create constraint trigger most_recent_flight_at_same_airport_constraint
+        after insert or update on flights
+        deferrable
+	for each row
+        execute procedure most_recent_flight_at_same_airport();
+-- --
+
+
+
+-- Define most_recent_flight_at_same_airport_on_delete function --
+
+-- Check that the most recent flight before F must have destination airport = source airport of F --
+create function most_recent_flight_at_same_airport_on_delete()
+returns trigger as
+$BODY$
+begin
+if 
+        ((select count(dest_IATA_code)
+                from
+                        flights
+                natural join
+                        (select max(arrival_time) as closest_to_departure
+                                from
+                                        flights
+                                where aircraft_ID = old.aircraft_ID
+                                        and departure_time < old.arrival_time
+                                        and flight_ID_num <> old.flight_ID_num) as T1
+                where arrival_time = closest_to_departure
+                        and aircraft_ID = old.aircraft_ID) <> 0)
+	AND
+	((select dest_IATA_code 
+		from
+			flights
+		natural join
+			(select max(arrival_time) as closest_to_departure
+				from 
+					flights 
+				where aircraft_ID = old.aircraft_ID 
+					and departure_time < old.arrival_time
+					and flight_ID_num <> old.flight_ID_num) as T1
+		where arrival_time = closest_to_departure
+			and aircraft_ID = old.aircraft_ID)
+	<>
+        (select source_IATA_code
+        	from
+                      	flights
+                natural join
+                        (select min(departure_time) as next_flight
+                                from
+                                      flights
+                                where aircraft_ID = old.aircraft_ID
+                                and departure_time > old.arrival_time
+                                and flight_ID_num <> old.flight_ID_num) as T1
+                where departure_time = next_flight
+                and aircraft_ID = old.aircraft_ID))
+then
+	raise exception 'The most recent flight before the next departure of the same aircraft must be located at the same airport.';
+end if;
+return old;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the most recent flight at same airport on delete constraint to the flights table --
+create constraint trigger most_recent_flight_at_same_airport_on_delete_constraint
+        after delete on flights
+        deferrable
+	for each row
+        execute procedure most_recent_flight_at_same_airport_on_delete();
+-- --
+
+
+
+-- Define departure_atleast_60min_after_arrival_of_F function --
+
+-- Check that the departure time of all flight with the same airraft as F depart at least 60 minutes after the arrival time of F --
+create function departure_atleast_60min_after_arrival_of_F()
+returns trigger as
+$BODY$
+begin
+if 
+	(select count(*)
+		from 
+			flights 
+		where aircraft_ID = new.aircraft_ID
+			and departure_time > new.departure_time
+			and flight_ID_num <> new.flight_ID_num)
+	<>
+	(select count(*) 
+			from
+				(select flight_ID_num, 
+					(extract(epoch from departure_time) - extract(epoch from new.arrival_time))/60 as difference 
+					from 
+						flights
+					where aircraft_ID = new.aircraft_ID 
+						and departure_time > new.arrival_time 
+						and flight_ID_num <> new.flight_ID_num) as T1
+			where difference >= 60)
+then
+	raise exception 'All such flights must have a departure time at least 60 minutes after the arrival time of a flight using the same aircraft.';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the departure at least 60 minutes after arrival of F constraint to the flights table --
+create constraint trigger departure_atleast_60min_after_arrival_of_F_constraint
+        after insert or update on flights
+       	deferrable
+	for each row
+        execute procedure departure_atleast_60min_after_arrival_of_F();
+-- --
+
+
+
+-- Define departure_atleast_60min_after_arrival_of_F_on_delete function --
+
+-- Check that the departure time of all flight with the same airraft as F depart at least 60 minutes after the arrival time of F --
+create function departure_atleast_60min_after_arrival_of_F_on_delete()
+returns trigger as
+$BODY$
+begin
+if 
+	(select count(*)
+		from 
+			flights 
+		where aircraft_ID = old.aircraft_ID
+			and departure_time >= old.departure_time
+			and flight_ID_num <> old.flight_ID_num)
+	<>
+	(select count(*) 
+			from
+				(select flight_ID_num, 
+					(extract(epoch from departure_time) - extract(epoch from old.arrival_time))/60 as difference 
+					from 
+						flights
+					where aircraft_ID = old.aircraft_ID 
+						and departure_time >= old.arrival_time 
+						and flight_ID_num <> old.flight_ID_num) as T1
+			where difference >= 60)
+then
+	raise exception 'All such flights must have a departure time at least 60 minutes after the arrival time of a flight using the same aircraft.';
+end if;
+return old;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the departure at least 60 minutes after arrival of F on delete constraint to the flights table --
+create constraint trigger departure_atleast_60min_after_arrival_of_F_on_delete_constraint
+        after delete on flights
+        deferrable
+	for each row
+        execute procedure departure_atleast_60min_after_arrival_of_F_on_delete();
+-- --
+
+
+-- Define next_flight_at_same_airport function --
+
+-- Check that the next flight after F must have source airport = destination airport of F --
+create function next_flight_at_same_airport()
+returns trigger as
+$BODY$
+begin
+if 
+	((select count(source_IATA_code)
+                from
+                        flights
+                natural join
+                        (select min(departure_time) as next_flight
+                                from
+                                        flights
+                                where aircraft_ID = new.aircraft_ID
+                                        and departure_time > new.arrival_time
+                                        and flight_ID_num <> new.flight_ID_num) as T1
+                where departure_time = next_flight
+                        and aircraft_ID = new.aircraft_ID) <> 0)
+	AND
+	((select source_IATA_code 
+		from
+			flights
+		natural join
+			(select min(departure_time) as next_flight 
+				from 
+					flights 
+				where aircraft_ID = new.aircraft_ID
+					and departure_time > new.arrival_time 
+					and flight_ID_num <> new.flight_ID_num) as T1
+		where departure_time = next_flight
+			and aircraft_ID = new.aircraft_ID)
+	<>
+	(select dest_IATA_code
+		from
+			flights
+		where flight_ID_num = new.flight_ID_num))
+then
+	raise exception 'The next flight after the arrival of the same aircraft must be located at the same airport.';
+end if;
+return new;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the next flight at same airport constraint to the flights table --
+create constraint trigger next_flight_at_same_airport_constraint
+        after insert or update on flights 
+	deferrable
+	for each row
+        execute procedure next_flight_at_same_airport();
+-- --
+
+
+
+-- Define next_flight_at_same_airport_on_delete function --
+
+-- Check that the next flight after F must have source airport = destination airport of F --
+create function next_flight_at_same_airport_on_delete()
+returns trigger as
+$BODY$
+begin
+if
+        ((select count(source_IATA_code)
+                from
+                        flights
+                natural join
+                        (select min(departure_time) as next_flight
+                                from
+                                        flights
+                                where aircraft_ID = old.aircraft_ID
+                                        and departure_time > old.arrival_time
+                                        and flight_ID_num <> old.flight_ID_num) as T1
+                where departure_time = next_flight
+                       	and aircraft_ID = old.aircraft_ID) <> 0)
+	AND 
+	((select source_IATA_code 
+		from
+			flights
+		natural join
+			(select min(departure_time) as next_flight 
+				from 
+					flights 
+				where aircraft_ID = old.aircraft_ID
+					and departure_time > old.arrival_time 
+					and flight_ID_num <> old.flight_ID_num) as T1
+		where departure_time = next_flight
+			and aircraft_ID = old.aircraft_ID)
+	<>
+        (select dest_IATA_code
+                from
+                        flights
+                natural join
+                        (select max(arrival_time) as next_flight
+                                from
+                                        flights
+                                where aircraft_ID = old.aircraft_ID
+                                        and departure_time < old.arrival_time
+                                        and flight_ID_num <> old.flight_ID_num) as T1
+                where arrival_time = next_flight
+                        and aircraft_ID = old.aircraft_ID))
+then
+	raise exception 'The next flight after the arrival of the same aircraft must be located at the same airport.';
+end if;
+return old;
+end 
+$BODY$
+language plpgsql;
+
+-- Add the next flight at same airport constraint to the flights table --
+create constraint trigger next_flight_at_same_airport_on_delete_constraint
+        after delete on flights
+	deferrable
+        for each row
+        execute procedure next_flight_at_same_airport_on_delete();
+-- -- 
